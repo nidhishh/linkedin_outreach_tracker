@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Outreach Tracker Helper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div className="card" id="app">
+    <header className="header">
+      <div className="logo-badge">
+        <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="23" y1="11" x2="17" y2="11"></line>
+        </svg>
+      </div>
+      <div>
+        <h1 className="title">Outreach Tracker</h1>
+        <p className="subtitle">LinkedIn Profile Capture</p>
+      </div>
+    </header>
+
+    <div id="content-container">
+      <div id="loading" className="state">
+        <div className="spinner"></div>
+        <p>Analyzing profile page...</p>
+      </div>
+
+      <div id="not-linkedin" className="state hidden">
+        <div className="alert-icon">⚠️</div>
+        <p className="alert-text">Open a LinkedIn profile page (e.g. <code>linkedin.com/in/...</code>) to capture profile info.</p>
+      </div>
+
+      <div id="profile-card" className="state hidden">
+        <div className="profile-header">
+          <div id="avatar-wrapper" className="avatar-wrapper">
+            <span id="avatar-fallback" className="avatar-fallback">👤</span>
+            <img id="profile-avatar" className="avatar hidden" alt="Avatar" />
+          </div>
+          <div className="profile-info">
+            <h2 id="profile-name" className="profile-name">Loading...</h2>
+            <p id="profile-title" className="profile-title"></p>
+            <p id="profile-company" className="profile-company"></p>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="label">Company</label>
+          <input type="text" id="company-input" className="select" placeholder="Company name..." />
+        </div>
+
+        <div className="form-group">
+          <label className="label">Pipeline Stage</label>
+          <select id="stage-select" className="select">
+            <option value="to_reach_out">To Reach Out</option>
+            <option value="connected">Connected</option>
+            <option value="replied">Replied</option>
+            <option value="meeting_booked">Meeting Booked</option>
+            <option value="in_discussion">In Discussion</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label className="label">Notes / Context</label>
+          <textarea id="notes-input" className="textarea" placeholder="Add quick notes or outreach angle..."></textarea>
+        </div>
+
+        <button id="send-btn" className="primary-btn">
+          <span>Load into Dashboard</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+
+        <div id="status-message" className="status-message hidden"></div>
+      </div>
+    </div>
+
+    <footer className="footer">
+      <a href="http://localhost:5173" target="_blank" className="dash-link">Open Dashboard ↗</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #EFEAE0;
+  }
+
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(38,48,42,0.05) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+
+  ::selection {
+    background-color: #C9A46E;
+    color: #26302A;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #DAD3C4 transparent;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Fraunces", serif;
+    font-feature-settings: "ss01" 1;
+  }
+}
+
+@layer components {
+  .input {
+    @apply w-full bg-paper/60 border border-line rounded-sm px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-1 focus:ring-brass focus:border-brass transition-colors;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
