@@ -8,7 +8,6 @@ import StatCard from "../components/StatCard";
 import StageBadge from "../components/StageBadge";
 import EmptyState from "../components/EmptyState";
 import ContactFormModal from "../components/ContactFormModal";
-import ExtensionBanner from "../components/ExtensionBanner";
 
 export default function Dashboard() {
   const { contacts, loading, removeContact } = useContacts();
@@ -45,7 +44,6 @@ export default function Dashboard() {
     return (
       <div className="max-w-5xl">
         <PageHeader />
-        <ExtensionBanner />
         <EmptyState
           icon={Sparkles}
           title="Your rolodex is empty"
@@ -67,7 +65,6 @@ export default function Dashboard() {
   return (
     <div className="max-w-5xl">
       <PageHeader />
-      <ExtensionBanner />
 
       <div className="grid grid-cols-4 gap-4 mb-8">
         <StatCard label="Active contacts" value={active.length} icon={Users} />
