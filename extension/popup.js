@@ -1,21 +1,22 @@
 let currentProfile = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const loadingEl = document.getElementById("loading");
-  const notLinkedinEl = document.getElementById("not-linkedin");
-  const profileCardEl = document.getElementById("profile-card");
-  const sendBtn = document.getElementById("send-btn");
-  const statusMsg = document.getElementById("status-message");
+  const loadingEl      = document.getElementById("loading");
+  const notLinkedinEl  = document.getElementById("not-linkedin");
+  const profileCardEl  = document.getElementById("profile-card");
+  const sendBtn        = document.getElementById("send-btn");
+  const statusMsg      = document.getElementById("status-message");
+  const statusDot      = document.getElementById("status-indicator");
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (!tab || !tab.url || !tab.url.includes("linkedin.com/in/")) {
-    loadingEl.classList.add("hidden");
-    notLinkedinEl.classList.remove("hidden");
+    show(loadingEl, false);
+    show(notLinkedinEl, true);
     return;
   }
 
-  // Inject content script dynamically if needed and request profile
+  // Inject content script and request profile extraction
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -23,29 +24,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     chrome.tabs.sendMessage(tab.id, { action: "EXTRACT_PROFILE" }, (response) => {
-      loadingEl.classList.add("hidden");
+      show(loadingEl, false);
 
       if (chrome.runtime.lastError || !response || !response.profile) {
-        notLinkedinEl.classList.remove("hidden");
+        show(notLinkedinEl, true);
         return;
       }
 
       currentProfile = response.profile;
       renderProfile(currentProfile);
-      profileCardEl.classList.remove("hidden");
+      show(profileCardEl, true);
+
+      // Mark extension as active
+      if (statusDot) statusDot.classList.add("active");
     });
   } catch (err) {
     console.error("Scripting error:", err);
-    loadingEl.classList.add("hidden");
-    notLinkedinEl.classList.remove("hidden");
+    show(loadingEl, false);
+    show(notLinkedinEl, true);
   }
 
   sendBtn.addEventListener("click", () => {
     if (!currentProfile) return;
 
-    const stage = document.getElementById("stage-select").value;
     const company = document.getElementById("company-input").value.trim();
-    const notes = document.getElementById("notes-input").value.trim();
+    const stage   = document.getElementById("stage-select").value;
+    const notes   = document.getElementById("notes-input").value.trim();
 
     const payload = {
       ...currentProfile,
@@ -55,38 +59,58 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     sendBtn.disabled = true;
-    sendBtn.style.opacity = "0.6";
 
     chrome.runtime.sendMessage(
       { action: "SAVE_PROFILE_TO_DASHBOARD", profile: payload },
       () => {
-        statusMsg.classList.remove("hidden", "error");
-        statusMsg.classList.add("success");
-        statusMsg.innerText = "✓ Saved & synced to Dashboard!";
-
-        setTimeout(() => {
-          window.close();
-        }, 1200);
+        setStatus("✓ Synced to Dashboard!", "success");
+        setTimeout(() => window.close(), 1400);
       }
     );
   });
 });
 
-function renderProfile(p) {
-  document.getElementById("profile-name").innerText = p.name || "LinkedIn Profile";
-  document.getElementById("profile-title").innerText = p.title || "No headline extracted";
-  document.getElementById("profile-company").innerText = p.company ? `🏢 ${p.company}` : "";
-  document.getElementById("company-input").value = p.company || "";
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-  const avatarImg = document.getElementById("profile-avatar");
+function show(el, visible) {
+  if (!el) return;
+  if (visible) {
+    el.classList.remove("hidden");
+  } else {
+    el.classList.add("hidden");
+  }
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById("status-message");
+  if (!el) return;
+  el.className = `status-msg ${type}`;
+  el.textContent = msg;
+}
+
+function renderProfile(p) {
+  const name    = p.name    || "LinkedIn Profile";
+  const title   = p.title   || "";
+  const company = p.company || "";
+
+  document.getElementById("profile-name").textContent    = name;
+  document.getElementById("profile-title").textContent   = title;
+  document.getElementById("profile-company").textContent = company ? `🏢 ${company}` : "";
+  document.getElementById("company-input").value         = company;
+
+  // LinkedIn link button
+  const liBtn = document.getElementById("profile-link");
+  if (liBtn && p.linkedinUrl) {
+    liBtn.href = p.linkedinUrl;
+  }
+
+  // Avatar
+  const avatarImg      = document.getElementById("profile-avatar");
   const avatarFallback = document.getElementById("avatar-fallback");
 
   if (p.avatarUrl) {
     avatarImg.src = p.avatarUrl;
-    avatarImg.classList.remove("hidden");
-    avatarFallback.classList.add("hidden");
-  } else {
-    avatarImg.classList.add("hidden");
-    avatarFallback.classList.remove("hidden");
+    avatarImg.onload  = () => { show(avatarImg, true); show(avatarFallback, false); };
+    avatarImg.onerror = () => { show(avatarImg, false); show(avatarFallback, true);  };
   }
 }
