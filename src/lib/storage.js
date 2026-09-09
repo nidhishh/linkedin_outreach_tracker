@@ -65,6 +65,8 @@ export async function createContact(data) {
     source: "",
     dateFirstContacted: null,
     nextFollowUpDate: null,
+    // Track how many follow-up attempts have been sent (Cadence tracker)
+    followUpCount: 0,
     notes: "",
     interactions: [],
     createdAt: now,
@@ -90,9 +92,20 @@ export async function updateContact(id, patch) {
   return contacts[idx];
 }
 
+// Deletes a single contact by ID from localStorage
 export async function deleteContact(id) {
   await tick();
   const contacts = readAll().filter((c) => c.id !== id);
+  writeAll(contacts);
+  return true;
+}
+
+// Deletes multiple contacts in a single batch operation for performance and atomicity
+export async function deleteMultipleContacts(ids) {
+  await tick();
+  const idSet = new Set(ids);
+  // Filter out any contact whose ID is contained in the selected set
+  const contacts = readAll().filter((c) => !idSet.has(c.id));
   writeAll(contacts);
   return true;
 }

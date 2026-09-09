@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Rows3 } from "lucide-react";
+import { Search, Rows3, Trash2, Clock } from "lucide-react";
 import { useContacts } from "../lib/ContactsContext";
 import { STAGES } from "../lib/stages";
 import { lastInteractionDate } from "../lib/storage";
-import { formatDate } from "../lib/dateUtils";
 import StageBadge from "../components/StageBadge";
 import FollowUpBadge from "../components/FollowUpBadge";
 import EmptyState from "../components/EmptyState";
@@ -16,11 +15,14 @@ const SORTS = {
 };
 
 export default function Contacts() {
-  const { contacts } = useContacts();
+  const { contacts, removeContact, removeMultipleContacts, quickBumpFollowUp, showToast } = useContacts();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [sortKey, setSortKey] = useState("recent");
+  
+  // Track selected contact IDs for manual batch deletion
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const filtered = useMemo(() => {
     let list = contacts;
@@ -39,6 +41,64 @@ export default function Contacts() {
     return [...list].sort(SORTS[sortKey].fn);
   }, [contacts, query, stageFilter, sortKey]);
 
+  // Toggle selection for a single contact row
+  const toggleSelect = (id, e) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Toggle selection for all currently visible/filtered contacts
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((c) => c.id)));
+    }
+  };
+
+  // Manual batch delete handler with confirmation prompt
+  const handleBatchDelete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    const confirmed = window.confirm(`Are you sure you want to permanently delete ${count} selected contacts?`);
+    if (confirmed) {
+      await removeMultipleContacts([...selectedIds]);
+      setSelectedIds(new Set());
+    }
+  };
+
+  // Single row delete handler
+  const handleDeleteRow = (c, e) => {
+    e.stopPropagation();
+    const confirmed = window.confirm(`Delete ${c.name || "this contact"}?`);
+    if (confirmed) {
+      removeContact(c.id);
+      showToast(`Deleted ${c.name || "contact"}`);
+      // Remove from selected set if it was selected
+      if (selectedIds.has(c.id)) {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(c.id);
+          return next;
+        });
+      }
+    }
+  };
+
+  // 1-Click quick bump (+3d / +1w) from table row
+  const handleQuickBump = (c, days, e) => {
+    e.stopPropagation();
+    quickBumpFollowUp(c.id, days);
+  };
+
   if (contacts.length === 0) {
     return (
       <div className="max-w-5xl">
@@ -52,12 +112,15 @@ export default function Contacts() {
     );
   }
 
+  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+
   return (
     <div>
       <Header />
 
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative flex-1 max-w-xs">
+      {/* Filter and Search Bar */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative flex-1 min-w-[220px] max-w-xs">
           <Search
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
@@ -96,58 +159,140 @@ export default function Contacts() {
           ))}
         </select>
 
+        {/* Bulk Action Bar: Shown when one or more rows are checked */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 bg-rust/10 border border-rust/30 px-3 py-1.5 rounded-sm animate-fade-in">
+            <span className="text-xs font-mono font-medium text-rust">
+              {selectedIds.size} selected
+            </span>
+            <button
+              type="button"
+              onClick={handleBatchDelete}
+              className="flex items-center gap-1 text-xs font-medium bg-rust text-surface px-2.5 py-1 rounded-sm hover:opacity-90 transition-opacity"
+            >
+              <Trash2 size={12} />
+              Delete Selected
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-ink-soft hover:text-ink ml-1"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         <span className="text-xs font-mono text-ink-faint ml-auto">
           {filtered.length} of {contacts.length}
         </span>
       </div>
 
+      {/* Contacts Table */}
       <div className="border border-line rounded-card overflow-hidden bg-surface shadow-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line bg-paper/40 text-left">
+              {/* Checkbox column header */}
+              <th className="w-10 px-3 py-2.5 text-center">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  className="rounded border-line text-brass focus:ring-brass cursor-pointer"
+                  title={allSelected ? "Deselect all" : "Select all"}
+                />
+              </th>
               <Th>Name</Th>
               <Th>Company</Th>
               <Th>Stage</Th>
-              <Th>Tags</Th>
-              <Th>Last activity</Th>
-              <Th>Next follow-up</Th>
+              <Th>Cadence</Th>
+              <Th>Next Follow-Up</Th>
+              <Th>Actions</Th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
-              <tr
-                key={c.id}
-                onClick={() => navigate(`/contacts/${c.id}`)}
-                className="border-b border-line last:border-b-0 hover:bg-paper/40 cursor-pointer transition-colors"
-              >
-                <td className="px-4 py-3">
-                  <p className="font-display text-[15px] text-ink">{c.name}</p>
-                  <p className="text-xs text-ink-soft">{c.title || "—"}</p>
-                </td>
-                <td className="px-4 py-3 text-ink-soft">{c.company || "—"}</td>
-                <td className="px-4 py-3">
-                  <StageBadge stageId={c.stage} />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1 max-w-[160px]">
-                    {(c.tags || []).slice(0, 2).map((t) => (
-                      <span
-                        key={t}
-                        className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-ink/[0.05] text-ink-soft"
-                      >
-                        {t}
+            {filtered.map((c) => {
+              const isSelected = selectedIds.has(c.id);
+              return (
+                <tr
+                  key={c.id}
+                  onClick={() => navigate(`/contacts/${c.id}`)}
+                  className={`border-b border-line last:border-b-0 hover:bg-paper/40 cursor-pointer transition-colors ${
+                    isSelected ? "bg-brass/5" : ""
+                  }`}
+                >
+                  {/* Row Checkbox for batch selection */}
+                  <td className="w-10 px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => toggleSelect(c.id, e)}
+                      className="rounded border-line text-brass focus:ring-brass cursor-pointer"
+                    />
+                  </td>
+
+                  {/* Name and headline */}
+                  <td className="px-4 py-3">
+                    <p className="font-display text-[15px] text-ink">{c.name}</p>
+                    <p className="text-xs text-ink-soft">{c.title || "—"}</p>
+                  </td>
+
+                  <td className="px-4 py-3 text-ink-soft">{c.company || "—"}</td>
+
+                  <td className="px-4 py-3">
+                    <StageBadge stageId={c.stage} />
+                  </td>
+
+                  {/* Cadence: follow up count */}
+                  <td className="px-4 py-3">
+                    {c.followUpCount > 0 ? (
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-brass/15 text-brass-dark font-medium inline-flex items-center gap-1">
+                        <Clock size={11} />
+                        #{c.followUpCount} nudge
                       </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-xs font-mono text-ink-faint">
-                  {formatDate(lastInteractionDate(c))}
-                </td>
-                <td className="px-4 py-3">
-                  <FollowUpBadge date={c.nextFollowUpDate} />
-                </td>
-              </tr>
-            ))}
+                    ) : (
+                      <span className="text-xs text-ink-faint">Initial</span>
+                    )}
+                  </td>
+
+                  {/* Next Follow Up Date badge */}
+                  <td className="px-4 py-3">
+                    <FollowUpBadge date={c.nextFollowUpDate} />
+                  </td>
+
+                  {/* Row Action Controls: Quick Bumps + Delete */}
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        title="Reschedule follow-up +3 days"
+                        onClick={(e) => handleQuickBump(c, 3, e)}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-line hover:border-brass hover:bg-brass/10 hover:text-ink transition-colors"
+                      >
+                        +3d
+                      </button>
+                      <button
+                        type="button"
+                        title="Reschedule follow-up +1 week"
+                        onClick={(e) => handleQuickBump(c, 7, e)}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-line hover:border-brass hover:bg-brass/10 hover:text-ink transition-colors"
+                      >
+                        +1w
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete contact"
+                        onClick={(e) => handleDeleteRow(c, e)}
+                        className="p-1 rounded text-ink-faint hover:text-rust hover:bg-rust/10 transition-colors ml-1"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

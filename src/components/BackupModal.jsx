@@ -17,7 +17,7 @@ export default function BackupModal({ open, onClose }) {
     const a = document.createElement("a");
     const date = new Date().toISOString().slice(0, 10);
     a.href = url;
-    a.download = `rolodex-backup-${date}.json`;
+    a.download = `lock-in-nigga-backup-${date}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -35,7 +35,7 @@ export default function BackupModal({ open, onClose }) {
       await refresh();
       setStatus({ ok: true, msg: "Backup restored." });
     } catch (err) {
-      setStatus({ ok: false, msg: "Couldn't read that file — is it a Rolodex backup?" });
+      setStatus({ ok: false, msg: "Couldn't read that file — is it a LOCK-IN-NIGGA backup?" });
     }
     e.target.value = "";
   }

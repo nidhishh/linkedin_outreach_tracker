@@ -8,6 +8,8 @@ import {
   Building2,
   Calendar,
   Tag as TagIcon,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { useContacts } from "../lib/ContactsContext";
 import { STAGES, STAGE_MAP } from "../lib/stages";
@@ -19,7 +21,14 @@ import ContactFormModal from "../components/ContactFormModal";
 export default function ContactDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { contacts, editContact, removeContact, loading } = useContacts();
+  const {
+    contacts,
+    editContact,
+    removeContact,
+    quickBumpFollowUp,
+    markFollowedUp,
+    loading,
+  } = useContacts();
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [notesDraft, setNotesDraft] = useState(null);
@@ -139,22 +148,78 @@ export default function ContactDetail() {
         </div>
 
         <aside className="flex flex-col gap-5">
+          {/* Follow-up & Cadence Command Card */}
           <div className="border border-line rounded-card bg-surface p-4 shadow-card">
-            <SectionLabel>Follow-up</SectionLabel>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-sm text-ink">
+            <div className="flex items-center justify-between">
+              <SectionLabel>Follow-up</SectionLabel>
+              {/* Cadence badge: tracks which follow-up attempt you are on */}
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-brass/15 text-brass-dark font-medium flex items-center gap-1">
+                <Clock size={11} />
+                {contact.followUpCount > 0 ? `#${contact.followUpCount} nudge` : "Initial"}
+              </span>
+            </div>
+
+            <div className="mt-2.5 flex items-center justify-between">
+              <span className="text-sm font-medium text-ink">
                 {formatDate(contact.nextFollowUpDate)}
               </span>
               <FollowUpBadge date={contact.nextFollowUpDate} />
             </div>
+
+            {/* 1-Click Action: logs interaction, advances cadence counter, reschedules next nudge */}
+            <button
+              type="button"
+              onClick={() => markFollowedUp(contact.id, 4)}
+              className="w-full mt-3 flex items-center justify-center gap-1.5 bg-brass/15 hover:bg-brass/25 text-brass-dark border border-brass/40 py-1.5 px-3 rounded-sm text-xs font-medium transition-colors"
+            >
+              <CheckCircle2 size={13} />
+              Mark Nudge Sent (+4d)
+            </button>
+
+            {/* Date Picker Input */}
             <input
               type="date"
               value={contact.nextFollowUpDate || ""}
               onChange={(e) =>
                 editContact(contact.id, { nextFollowUpDate: e.target.value || null })
               }
-              className="input mt-3"
+              className="input mt-3 text-xs"
             />
+
+            {/* Quick Reschedule Pill Buttons */}
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-line/60">
+              <span className="text-[10px] font-mono text-ink-faint">Quick Bump:</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => quickBumpFollowUp(contact.id, 0)}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-line hover:border-brass hover:bg-brass/10 hover:text-ink transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickBumpFollowUp(contact.id, 3)}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-line hover:border-brass hover:bg-brass/10 hover:text-ink transition-colors"
+                >
+                  +3d
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickBumpFollowUp(contact.id, 7)}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-line hover:border-brass hover:bg-brass/10 hover:text-ink transition-colors"
+                >
+                  +1w
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickBumpFollowUp(contact.id, 14)}
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-line hover:border-brass hover:bg-brass/10 hover:text-ink transition-colors"
+                >
+                  +2w
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="border border-line rounded-card bg-surface p-4 shadow-card flex flex-col gap-3">

@@ -13,7 +13,7 @@ export default function Sidebar({ onAddContact, onBackup }) {
       <div className="px-6 pt-7 pb-6">
         <div className="flex items-baseline gap-2">
           <span className="font-display text-2xl italic tracking-tight">
-            Rolodex
+            LOCK-IN-NIGGA
           </span>
         </div>
         <p className="text-[11px] font-mono uppercase tracking-widest text-surface/45 mt-1">
