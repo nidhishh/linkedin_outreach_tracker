@@ -166,10 +166,58 @@ export async function exportData() {
   return JSON.stringify(readAll(), null, 2);
 }
 
+// Imports contact data from a JSON string. Supports:
+// 1. Raw contact arrays: [ { id, name, ... }, ... ]
+// 2. Extension storage exports: { capturedProfiles: [ ... ] }
+// 3. Nested backups: { contacts: [ ... ] }
 export async function importData(json) {
   await tick();
   const parsed = JSON.parse(json);
-  if (!Array.isArray(parsed)) throw new Error("Invalid import file");
-  writeAll(parsed);
-  return parsed;
+
+  // Extract the contacts list regardless of wrapper format
+  let list = [];
+  if (Array.isArray(parsed)) {
+    list = parsed;
+  } else if (parsed && typeof parsed === "object") {
+    if (Array.isArray(parsed.capturedProfiles)) {
+      list = parsed.capturedProfiles;
+    } else if (Array.isArray(parsed.contacts)) {
+      list = parsed.contacts;
+    }
+  }
+
+  // If no valid list was found, reject with an error
+  if (!Array.isArray(list) || list.length === 0 && !Array.isArray(parsed)) {
+    throw new Error("Invalid import file format");
+  }
+
+  // Normalize each profile to guarantee valid contact schema properties
+  const normalized = list.map((item, index) => {
+    const now = item.capturedAt || item.createdAt || new Date().toISOString();
+    return {
+      // Ensure unique ID exists
+      id: item.id || `c_${(Date.now() - index * 1000).toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      name: item.name || "LinkedIn Contact",
+      title: item.title || "",
+      company: item.company || "",
+      linkedinUrl: item.linkedinUrl || "",
+      stage: item.stage || "to_reach_out",
+      notes: item.notes || "",
+      source: item.source || "Chrome Extension",
+      avatarUrl: item.avatarUrl || "",
+      tags: Array.isArray(item.tags) ? item.tags : [],
+      dateFirstContacted: item.dateFirstContacted || null,
+      nextFollowUpDate: item.nextFollowUpDate || null,
+      followUpCount: typeof item.followUpCount === "number" ? item.followUpCount : 0,
+      interactions: Array.isArray(item.interactions) ? item.interactions : [],
+      createdAt: item.createdAt || now,
+      updatedAt: item.updatedAt || now,
+      ...item,
+    };
+  });
+
+  // Write the normalized contacts array into localStorage
+  writeAll(normalized);
+  return normalized;
 }
+
