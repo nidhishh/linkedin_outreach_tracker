@@ -11,15 +11,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.storage.local.set({ capturedProfiles: updated });
     });
 
-    // 2. Broadcast to open dashboard tabs
+    // 2. Broadcast to all open dashboard tabs across supported domains
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach((tab) => {
-        if (tab.url && (tab.url.includes("localhost") || tab.url.includes("127.0.0.1"))) {
+        // Match both local development tabs (localhost/127.0.0.1) and
+        // the hosted production dashboard on GitHub Pages (github.io)
+        const isDashboardTab =
+          tab.url &&
+          (tab.url.includes("localhost") ||
+            tab.url.includes("127.0.0.1") ||
+            tab.url.includes("github.io"));
+
+        if (isDashboardTab) {
+          // Send the captured LinkedIn profile directly into the tab's dashboard-bridge.js
           chrome.tabs.sendMessage(tab.id, {
             action: "SYNC_NEW_PROFILE",
             profile: profile
           }).catch(() => {
-            // Ignore errors if tab isn't listening
+            // Ignore errors if the tab is still loading or hasn't finished registering listeners
           });
         }
       });

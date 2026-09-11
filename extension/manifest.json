@@ -12,7 +12,8 @@
   "host_permissions": [
     "https://*.linkedin.com/*",
     "http://localhost/*",
-    "http://127.0.0.1/*"
+    "http://127.0.0.1/*",
+    "https://*.github.io/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -28,7 +29,11 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["http://localhost/*", "http://127.0.0.1/*"],
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://*.github.io/*"
+      ],
       "js": ["dashboard-bridge.js"],
       "run_at": "document_idle"
     }
